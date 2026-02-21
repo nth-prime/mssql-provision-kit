@@ -81,8 +81,16 @@ if [[ "$enforce" == "1" ]]; then
 
   [[ -n "$sql_rules" ]] || die "No ufw rules found for SQL port $sql_port"
 
-  # Fail if broad allow rules exist while whitelist enforcement is requested.
-  echo "$sql_rules" | grep -Eq 'Anywhere( \(v6\))?' && die "Broad SQL port allow rule found (Anywhere) while whitelist enforcement is enabled"
+  # Fail if broad allow rules exist on non-Tailscale scope while whitelist enforcement is requested.
+  while IFS= read -r rule; do
+    [[ -n "$rule" ]] || continue
+    if echo "$rule" | grep -Eq 'Anywhere( \(v6\))?'; then
+      if [[ "$allow_ts" == "1" ]] && echo "$rule" | grep -Fqi "on $ts_if"; then
+        continue
+      fi
+      die "Broad SQL port allow rule found (Anywhere) on non-Tailscale scope while whitelist enforcement is enabled"
+    fi
+  done <<< "$sql_rules"
 
   for cidr in $wl4; do
     echo "$sql_rules" | grep -Fq "$cidr" || die "Missing ufw SQL allow rule for IPv4 CIDR: $cidr"

@@ -18,7 +18,7 @@ assert_contains "$f" 'NETWORK_ALLOW_TAILSCALE=0 but SQL port rule still allows i
 assert_contains "$f" 'Tailscale SQL exposure enabled and validated.'
 assert_contains "$f" 'Tailscale SQL exposure disabled and validated.'
 assert_contains "$f" 'Whitelist enforcement enabled but NETWORK_ALLOWED_IPV4/IPv6 are empty'
-assert_contains "$f" 'Broad SQL port allow rule found (Anywhere) while whitelist enforcement is enabled'
+assert_contains "$f" 'Broad SQL port allow rule found (Anywhere) on non-Tailscale scope while whitelist enforcement is enabled'
 assert_contains "$f" 'Whitelist enforcement checks passed.'
 assert_contains "$f" 'Network validation complete.'
 
