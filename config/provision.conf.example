@@ -1,0 +1,59 @@
+# Core behavior
+TARGET_SQL_MAJOR="2025"
+SUPPORTED_OS_ID="ubuntu"
+SUPPORTED_OS_VERSION="24.04"
+DRY_RUN_DEFAULT="1"
+
+# Version strategy: latest|pinned|explicit
+VERSION_STRATEGY="latest"
+PINNED_BUILD=""
+EXPLICIT_DEB_URL=""
+
+# Edition: Developer|Standard
+MSSQL_EDITION="Developer"
+MSSQL_STANDARD_PRODUCT_KEY=""
+ALLOW_KEY_PERSIST="0"
+
+# Auth
+PROMPT_FOR_SA_PASSWORD="1"
+MSSQL_SA_PASSWORD=""
+DEFAULT_SYSADMIN_LOGIN="sqladmin"
+DEFAULT_SYSADMIN_PASSWORD=""
+
+# Generic volume map
+VOLUMES="v1 v2 v3 v4"
+VOLUME_v1_DEVICE="/dev/disk/by-id/CHANGE_ME_D"
+VOLUME_v1_FS="xfs"
+VOLUME_v1_MOUNT="/mnt/d"
+VOLUME_v1_MKFS_OPTS=""
+VOLUME_v1_MOUNT_OPTS="defaults,nofail"
+
+VOLUME_v2_DEVICE="/dev/disk/by-id/CHANGE_ME_L"
+VOLUME_v2_FS="xfs"
+VOLUME_v2_MOUNT="/mnt/l"
+VOLUME_v2_MKFS_OPTS=""
+VOLUME_v2_MOUNT_OPTS="defaults,nofail"
+
+VOLUME_v3_DEVICE="/dev/disk/by-id/CHANGE_ME_B"
+VOLUME_v3_FS="xfs"
+VOLUME_v3_MOUNT="/mnt/b"
+VOLUME_v3_MKFS_OPTS=""
+VOLUME_v3_MOUNT_OPTS="defaults,nofail"
+
+VOLUME_v4_DEVICE="/dev/disk/by-id/CHANGE_ME_T"
+VOLUME_v4_FS="xfs"
+VOLUME_v4_MOUNT="/mnt/t"
+VOLUME_v4_MKFS_OPTS=""
+VOLUME_v4_MOUNT_OPTS="defaults,nofail"
+
+# SQL role mapping
+SQL_DATA_VOLUME="v1"
+SQL_LOG_VOLUME="v2"
+SQL_BACKUP_VOLUME="v3"
+SQL_TEMPDB_VOLUME="v4"
+
+# SQL paths (resolved by mapping)
+SQL_DATA_PATH=""
+SQL_LOG_PATH=""
+SQL_BACKUP_PATH=""
+SQL_TEMPDB_PATH=""

@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BASE_DIR="/opt/mssql-provision-kit"
+SECTOR_DIR="$BASE_DIR/sectors"
+CONFIG_FILE="/etc/mssql-provision-kit/provision.conf"
+VERSION_FILE="$BASE_DIR/VERSION"
+
+current_version() {
+  if [[ -f "$VERSION_FILE" ]]; then
+    tr -d '[:space:]' < "$VERSION_FILE"
+  else
+    echo "unknown"
+  fi
+}
+
+run_sector() {
+  local script="$1"
+  shift || true
+  if [[ ! -x "$script" ]]; then
+    echo "Missing sector: $script"
+    return 1
+  fi
+  if [[ $(id -u) -ne 0 ]]; then
+    sudo "$script" "$@"
+  else
+    "$script" "$@"
+  fi
+}
+
+pick_editor() {
+  if [[ -n "${EDITOR:-}" ]]; then
+    echo "$EDITOR"; return 0
+  fi
+  command -v nano >/dev/null 2>&1 && { echo nano; return 0; }
+  command -v vi >/dev/null 2>&1 && { echo vi; return 0; }
+  return 1
+}
+
+edit_config() {
+  if [[ ! -f "$CONFIG_FILE" ]]; then
+    echo "Config missing: $CONFIG_FILE"
+    return 1
+  fi
+  local ed
+  ed="$(pick_editor)" || { echo "No editor found."; return 1; }
+  if [[ $(id -u) -ne 0 ]]; then
+    sudo "$ed" "$CONFIG_FILE"
+  else
+    "$ed" "$CONFIG_FILE"
+  fi
+}
+
+storage_menu() {
+  while true; do
+    clear || true
+    echo "=============================="
+    echo " Drive Provisioning"
+    echo "=============================="
+    echo "1) Run Storage Preflight"
+    echo "2) Inspect Disks and Topology"
+    echo "3) Inspect Mounts and Free Space"
+    echo "4) Inspect Filesystem Health"
+    echo "5) Build Provisioning Plan (Interactive)"
+    echo "6) Preview Plan (Dry-Run)"
+    echo "7) Apply Plan: Partition + Format + Mount"
+    echo "8) Apply Plan: Mount + Fstab Only"
+    echo "9) Validate Provisioned Volumes"
+    echo "10) Map Volumes to SQL Roles"
+    echo "11) Export Provisioning Report"
+    echo "12) Rollback Last Provisioning Transaction"
+    echo "13) Advanced Tools (Expert Mode)"
+    echo "14) Back"
+    read -rp "Select: " sopt
+    case "$sopt" in
+      1) run_sector "$SECTOR_DIR/40-storage-preflight.sh" ;;
+      2) run_sector "$SECTOR_DIR/41-storage-inspect.sh" ;;
+      3) run_sector "$SECTOR_DIR/41-storage-inspect.sh" mounts ;;
+      4) run_sector "$SECTOR_DIR/42-storage-health.sh" ;;
+      5) run_sector "$SECTOR_DIR/43-storage-plan.sh" ;;
+      6) run_sector "$SECTOR_DIR/44-storage-apply.sh" --dry-run ;;
+      7) run_sector "$SECTOR_DIR/44-storage-apply.sh" --apply ;;
+      8) run_sector "$SECTOR_DIR/44-storage-apply.sh" --apply --mount-only ;;
+      9) run_sector "$SECTOR_DIR/45-storage-validate.sh" ;;
+      10) run_sector "$SECTOR_DIR/46-storage-role-map.sh" ;;
+      11) run_sector "$SECTOR_DIR/47-storage-report.sh" ;;
+      12) run_sector "$SECTOR_DIR/48-storage-rollback.sh" ;;
+      13) run_sector "$SECTOR_DIR/49-storage-advanced.sh" ;;
+      14) return 0 ;;
+      *) echo "Invalid option" ;;
+    esac
+    read -rp "Run another storage action? (Y/n): " again
+    [[ -z "$again" || "$again" =~ ^[yY]$ ]] || return 0
+  done
+}
+
+while true; do
+  clear || true
+  VERSION="$(current_version)"
+  echo "=============================="
+  echo " MSSQL Provision Kit v$VERSION"
+  echo "=============================="
+  echo "1) Edit Config"
+  echo "2) Run Host + SQL Preflight"
+  echo "3) Dry-Run Install Plan"
+  echo "4) Install SQL Server 2025"
+  echo "5) Post-Install Validation"
+  echo "6) Drive Provisioning"
+  echo "7) Uninstall / Cleanup"
+  echo "8) Show State + Logs"
+  echo "q) Quit"
+  read -rp "Select: " opt
+
+  case "$opt" in
+    1) edit_config ;;
+    2) run_sector "$SECTOR_DIR/10-host-preflight.sh" ;;
+    3) run_sector "$SECTOR_DIR/20-install-sql.sh" --dry-run ;;
+    4) run_sector "$SECTOR_DIR/20-install-sql.sh" --apply ;;
+    5) run_sector "$SECTOR_DIR/30-post-validate.sh" ;;
+    6) storage_menu ;;
+    7) run_sector "$SECTOR_DIR/80-uninstall-cleanup.sh" ;;
+    8) run_sector "$SECTOR_DIR/90-show-state.sh" ;;
+    q|Q) exit 0 ;;
+    *) echo "Invalid selection." ;;
+  esac
+
+  read -rp "Run another selector? (Y/n): " again
+  [[ -z "$again" || "$again" =~ ^[yY]$ ]] || exit 0
+done
