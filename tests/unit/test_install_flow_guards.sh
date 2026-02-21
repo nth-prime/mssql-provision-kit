@@ -14,8 +14,10 @@ assert_contains "$f" 'Sysadmin login name'
 assert_contains "$f" 'DRY-RUN: would run mssql-conf with PID and SA password (redacted).'
 assert_contains "$f" 'sql_escape_literal()'
 assert_contains "$f" 'sql_escape_identifier()'
+assert_contains "$f" 'config/ubuntu/24.04/prod.list'
 assert_contains "$f" 'apt-get install -y mssql-tools18 unixodbc-dev'
+assert_contains "$f" 'apt-get install -y mssql-tools unixodbc-dev || die "Unable to install sqlcmd tools"'
 assert_contains "$f" 'ALTER DATABASE [tempdb] MODIFY FILE'
-assert_contains "$f" '[[ -x "$sqlcmd_bin" ]] || die "sqlcmd not found at $sqlcmd_bin"'
+assert_contains "$f" 'sqlcmd not found at /opt/mssql-tools18/bin/sqlcmd or /opt/mssql-tools/bin/sqlcmd'
 
 echo "install flow guard checks passed"

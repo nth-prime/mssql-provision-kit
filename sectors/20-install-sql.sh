@@ -84,6 +84,7 @@ run_cmd "$dry_run" mkdir -p "$storage_root" "$data_path" "$log_path" "$backup_pa
 # Repos and package install
 run_cmd "$dry_run" bash -c "curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg"
 run_cmd "$dry_run" bash -c "curl -fsSL https://packages.microsoft.com/config/ubuntu/24.04/mssql-server-2025.list > /etc/apt/sources.list.d/mssql-server-2025.list"
+run_cmd "$dry_run" bash -c "curl -fsSL https://packages.microsoft.com/config/ubuntu/24.04/prod.list > /etc/apt/sources.list.d/msprod.list"
 run_cmd "$dry_run" apt-get update
 
 if [[ "$strategy" == "latest" ]]; then
@@ -103,7 +104,15 @@ else
 fi
 
 # sqlcmd is required for creating the mandatory sysadmin login and post-install actions.
-run_cmd "$dry_run" bash -c "ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev"
+if [[ "$dry_run" == "1" ]]; then
+  log "DRY-RUN: would install sqlcmd tools from Microsoft prod repo."
+  log "DRY-RUN: ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev"
+else
+  if ! ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev; then
+    log "mssql-tools18 not found, trying mssql-tools fallback"
+    ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev || die "Unable to install sqlcmd tools"
+  fi
+fi
 
 pid="Developer"
 if [[ "$edition" == "Standard" ]]; then
@@ -124,17 +133,20 @@ fi
 
 if [[ "$dry_run" == "0" ]]; then
   sqlcmd_bin="/opt/mssql-tools18/bin/sqlcmd"
-  [[ -x "$sqlcmd_bin" ]] || die "sqlcmd not found at $sqlcmd_bin"
+  if [[ ! -x "$sqlcmd_bin" ]]; then
+    sqlcmd_bin="/opt/mssql-tools/bin/sqlcmd"
+  fi
+  [[ -x "$sqlcmd_bin" ]] || die "sqlcmd not found at /opt/mssql-tools18/bin/sqlcmd or /opt/mssql-tools/bin/sqlcmd"
 
   login_esc="$(sql_escape_identifier "$sys_login")"
   pw_esc="$(sql_escape_literal "$sys_pw")"
   temp_path_esc="$(sql_escape_literal "$tempdb_path")"
 
   q="CREATE LOGIN [$login_esc] WITH PASSWORD=N'$pw_esc', DEFAULT_DATABASE=[master], CHECK_POLICY=ON; ALTER SERVER ROLE [sysadmin] ADD MEMBER [$login_esc];"
-  /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$sa_pw" -Q "$q"
+  "$sqlcmd_bin" -S localhost -U sa -P "$sa_pw" -Q "$q"
 
   # Set tempdb primary file/log locations to the configured directory.
-  /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$sa_pw" -Q "ALTER DATABASE [tempdb] MODIFY FILE (NAME = N'tempdev', FILENAME = N'$temp_path_esc/tempdb.mdf'); ALTER DATABASE [tempdb] MODIFY FILE (NAME = N'templog', FILENAME = N'$temp_path_esc/templog.ldf');"
+  "$sqlcmd_bin" -S localhost -U sa -P "$sa_pw" -Q "ALTER DATABASE [tempdb] MODIFY FILE (NAME = N'tempdev', FILENAME = N'$temp_path_esc/tempdb.mdf'); ALTER DATABASE [tempdb] MODIFY FILE (NAME = N'templog', FILENAME = N'$temp_path_esc/templog.ldf');"
 
   systemctl restart mssql-server
 fi
