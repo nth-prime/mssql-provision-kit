@@ -1,25 +1,26 @@
 # mssql-provision-kit
 
-SQL Server 2025 provisioning kit for Ubuntu 24.04 with:
+SQL Server 2025 provisioning kit for Ubuntu 24.04 with modular sectors, idempotent scripts, mandatory preflight checks, and storage provisioning workflows.
 
-- strict support gating
-- mandatory preflight checks
-- dry-run install flow
-- granular drive provisioning submenu
-- uninstall/cleanup guardrails
-
-## Support Matrix
+## Scope and Support
 
 - OS: Ubuntu 24.04
 - SQL: SQL Server 2025
 - Filesystems: `xfs` and `ext4`
-
 The kit hard-fails outside this scope by design.
+
+## Security and Safety Defaults
+
+- Mandatory preflight before install
+- Dry-run path for install and storage planning
+- Explicit typed confirmations for apply/rollback/uninstall paths
+- Uninstall requires exact input: `uninstall`
+- Transaction snapshots for storage changes under `/var/lib/mssql-provision-kit/state/transactions`
 
 ## Repository Layout
 
 ```text
-install-mssql-kit/
+mssql-provision-kit/
   VERSION
   install.sh
   provision
@@ -57,19 +58,77 @@ Install target paths:
 - `/var/lib/mssql-provision-kit/state`
 - `/var/log/mssql-provision-kit`
 
+## Requirements
+
+- Ubuntu 24.04 host
+- Root or `sudo` privileges
+- `systemd`
+- Internet access for package/repository installation
+
 ## Install
 
+### Option 1: Clone and install
+
 ```bash
+git clone https://github.com/nth-prime/mssql-provision-kit.git
+cd mssql-provision-kit
 sudo bash install.sh
 ```
 
-Then run:
+### Option 2: One-liner from GitHub
+
+```bash
+set -euo pipefail
+tmpdir="$(mktemp -d)"
+curl -fsSL "https://github.com/nth-prime/mssql-provision-kit/archive/refs/heads/main.tar.gz" -o "$tmpdir/mssql-provision-kit.tar.gz"
+tar -xzf "$tmpdir/mssql-provision-kit.tar.gz" -C "$tmpdir"
+cd "$tmpdir/mssql-provision-kit-main"
+sudo bash install.sh
+```
+
+After install:
 
 ```bash
 mssql-provision-kit
 ```
 
-## Top-Level Selector
+## Configuration
+
+Config file path:
+
+`/etc/mssql-provision-kit/provision.conf`
+
+Initial config is copied from:
+
+`config/provision.conf.example`
+
+Key settings:
+
+- `VERSION_STRATEGY=latest|pinned|explicit`
+- `PINNED_BUILD` for pinned package installs
+- `EXPLICIT_DEB_URL` for explicit package URL installs
+- `MSSQL_EDITION=Developer|Standard`
+- `PROMPT_FOR_SA_PASSWORD=1|0`
+- `DEFAULT_SYSADMIN_LOGIN` (prompt allows override)
+- `VOLUMES="v1 v2 ..."` with per-volume `DEVICE/FS/MOUNT` keys
+- SQL role mapping: `SQL_DATA_VOLUME`, `SQL_LOG_VOLUME`, `SQL_BACKUP_VOLUME`, `SQL_TEMPDB_VOLUME`
+
+Default role intent mount mapping:
+
+- data: `/mnt/d`
+- log: `/mnt/l`
+- backup: `/mnt/b`
+- tempdb: `/mnt/t`
+
+## Usage
+
+Run selector:
+
+```bash
+mssql-provision-kit
+```
+
+Top-level menu:
 
 1. Edit Config
 2. Run Host + SQL Preflight
@@ -80,7 +139,7 @@ mssql-provision-kit
 7. Uninstall / Cleanup
 8. Show State + Logs
 
-## Drive Provisioning Selector
+Drive Provisioning submenu:
 
 1. Run Storage Preflight
 2. Inspect Disks and Topology
@@ -97,41 +156,6 @@ mssql-provision-kit
 13. Advanced Tools (Expert Mode)
 14. Back
 
-## Configuration
-
-Config file:
-
-`/etc/mssql-provision-kit/provision.conf`
-
-Seed example:
-
-`config/provision.conf.example`
-
-Key settings:
-
-- `VERSION_STRATEGY=latest|pinned|explicit`
-- `PINNED_BUILD` for pinned package installs
-- `EXPLICIT_DEB_URL` for explicit package URL installs
-- `MSSQL_EDITION=Developer|Standard`
-- `PROMPT_FOR_SA_PASSWORD=1|0`
-- `DEFAULT_SYSADMIN_LOGIN` (prompt allows override)
-- `VOLUMES="v1 v2 ..."` with per-volume `DEVICE/FS/MOUNT` keys
-- SQL role mapping: `SQL_DATA_VOLUME`, `SQL_LOG_VOLUME`, `SQL_BACKUP_VOLUME`, `SQL_TEMPDB_VOLUME`
-
-Default role intent maps to Linux mounts:
-
-- data: `/mnt/d`
-- log: `/mnt/l`
-- backup: `/mnt/b`
-- tempdb: `/mnt/t`
-
-## Safety and Cleanup
-
-- Install flow supports `--dry-run` and `--apply`.
-- Storage apply requires explicit `apply` confirmation.
-- Uninstall requires exact typed confirmation: `uninstall`.
-- Transaction snapshots are stored under `/var/lib/mssql-provision-kit/state/transactions`.
-
 ## Versioning
 
 - Repository version is stored in `VERSION`.
@@ -144,6 +168,15 @@ Suggested release flow:
 1. Update `VERSION`
 2. Run tests
 3. Tag release (for example `v0.1.0`)
+
+## Troubleshooting
+
+- `Missing config: /etc/mssql-provision-kit/provision.conf`:
+  - Re-run `sudo bash install.sh`.
+- `Unsupported OS` errors:
+  - Confirm host is Ubuntu 24.04.
+- Storage apply/validate failures:
+  - Run Drive Provisioning options `1`, `2`, `6`, and `9` in sequence.
 
 ## Testing
 
