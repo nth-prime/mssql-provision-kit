@@ -4,7 +4,8 @@ source /opt/mssql-provision-kit/lib/lib.sh
 
 require_root
 
-echo "This will remove mssql-server package and kit files tracked by this installer."
+echo "This will remove SQL Server packages and SQL data/tooling remnants."
+echo "The mssql-provision-kit itself will remain installed."
 read -rp "Type uninstall to proceed: " typed
 [[ "$typed" == "uninstall" ]] || die "Uninstall cancelled"
 
@@ -14,10 +15,19 @@ if dpkg -s mssql-server >/dev/null 2>&1; then
   apt-get remove -y mssql-server || true
 fi
 
-rm -f /usr/local/bin/mssql-provision-kit || true
-rm -rf /opt/mssql-provision-kit || true
-rm -rf /etc/mssql-provision-kit || true
-rm -rf /var/lib/mssql-provision-kit || true
-rm -rf /var/log/mssql-provision-kit || true
+# Optional SQL client tooling packages.
+if dpkg -s mssql-tools18 >/dev/null 2>&1; then
+  ACCEPT_EULA=Y apt-get remove -y mssql-tools18 || true
+fi
+if dpkg -s mssql-tools >/dev/null 2>&1; then
+  ACCEPT_EULA=Y apt-get remove -y mssql-tools || true
+fi
+
+# Remove SQL Server runtime and data remnants, but keep the provision kit.
+rm -rf /var/opt/mssql || true
+rm -rf /opt/mssql || true
+rm -f /etc/apt/sources.list.d/mssql-server-2025.list || true
+rm -f /etc/apt/sources.list.d/msprod.list || true
+apt-get update || true
 
 echo "Uninstall cleanup complete."

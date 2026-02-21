@@ -16,6 +16,7 @@ The kit hard-fails outside this scope by design.
 - Dry-run path for install and storage layout
 - Explicit typed confirmations for apply/uninstall paths
 - Uninstall requires exact input: `uninstall`
+- Uninstall/Cleanup removes SQL Server and SQL remnants, but keeps the provision kit installed
 
 ## Repository Layout
 
