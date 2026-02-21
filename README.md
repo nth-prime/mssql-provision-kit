@@ -35,6 +35,7 @@ mssql-provision-kit/
     20-install-sql.sh
     30-post-validate.sh
     31-network-validate.sh
+    32-network-apply.sh
     40-storage-preflight.sh
     41-storage-inspect.sh
     42-storage-health.sh
@@ -153,7 +154,8 @@ Top-level menu:
 10. Restart Machine Now
 11. Update Provision Kit from GitHub
 12. Run Network Validation
-13. Print Effective Config
+13. Configure Network Policy
+14. Print Effective Config
 
 Storage Layout submenu:
 
