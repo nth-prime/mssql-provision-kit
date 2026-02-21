@@ -8,6 +8,8 @@ echo "This will remove mssql-server package and kit files tracked by this instal
 read -rp "Type uninstall to proceed: " typed
 [[ "$typed" == "uninstall" ]] || die "Uninstall cancelled"
 
+log "Starting uninstall cleanup"
+
 if dpkg -s mssql-server >/dev/null 2>&1; then
   apt-get remove -y mssql-server || true
 fi
@@ -18,4 +20,4 @@ rm -rf /etc/mssql-provision-kit || true
 rm -rf /var/lib/mssql-provision-kit || true
 rm -rf /var/log/mssql-provision-kit || true
 
-log "Uninstall cleanup complete."
+echo "Uninstall cleanup complete."
