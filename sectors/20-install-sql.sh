@@ -6,6 +6,55 @@ usage() {
   echo "Usage: $0 [--dry-run|--apply]"
 }
 
+wait_for_unit_active() {
+  local timeout_s="${1:-180}"
+  local interval_s="${2:-5}"
+  local waited=0
+  local state
+
+  while (( waited < timeout_s )); do
+    state="$(systemctl is-active mssql-server 2>/dev/null || true)"
+    case "$state" in
+      active)
+        log "mssql-server unit state is active."
+        return 0
+        ;;
+      activating|deactivating|reloading)
+        log "mssql-server unit state: ${state} (${waited}/${timeout_s}s)"
+        ;;
+      failed|inactive|"")
+        log "mssql-server unit state: ${state:-unknown} (${waited}/${timeout_s}s)"
+        ;;
+      *)
+        log "mssql-server unit state: $state (${waited}/${timeout_s}s)"
+        ;;
+    esac
+    sleep "$interval_s"
+    waited=$((waited + interval_s))
+  done
+  return 1
+}
+
+recover_mssql_service() {
+  log "Attempting mssql-server recovery sequence (stop/kill/reset-failed/start)"
+  systemctl stop mssql-server || true
+  sleep 2
+  systemctl kill -s SIGKILL mssql-server || true
+  pkill -9 -f /opt/mssql/bin/sqlservr || true
+  systemctl reset-failed mssql-server || true
+  systemctl start mssql-server || die "Unable to start mssql-server after recovery sequence"
+  wait_for_unit_active 180 5 || die "mssql-server did not reach active state after recovery sequence"
+}
+
+restart_mssql_resilient() {
+  log "Restarting mssql-server (non-blocking)"
+  systemctl restart --no-block mssql-server || true
+  if ! wait_for_unit_active 180 5; then
+    log "mssql-server restart did not converge; attempting recovery"
+    recover_mssql_service
+  fi
+}
+
 wait_for_sql_ready() {
   local sqlcmd_bin="$1"
   local sa_pw="$2"
@@ -159,7 +208,7 @@ else
   /opt/mssql/bin/mssql-conf set filelocation.defaultbackupdir "$backup_path"
   mkdir -p "$tempdb_path"
   chown -R mssql:mssql "$storage_root"
-  systemctl restart mssql-server
+  restart_mssql_resilient
 fi
 
 if [[ "$dry_run" == "0" ]]; then
@@ -181,7 +230,7 @@ if [[ "$dry_run" == "0" ]]; then
   # Set tempdb primary file/log locations to the configured directory.
   "$sqlcmd_bin" -S localhost -U sa -P "$sa_pw" -Q "ALTER DATABASE [tempdb] MODIFY FILE (NAME = N'tempdev', FILENAME = N'$temp_path_esc/tempdb.mdf'); ALTER DATABASE [tempdb] MODIFY FILE (NAME = N'templog', FILENAME = N'$temp_path_esc/templog.ldf');"
 
-  systemctl restart mssql-server
+  restart_mssql_resilient
   wait_for_sql_ready "$sqlcmd_bin" "$sa_pw" 180 5
 fi
 

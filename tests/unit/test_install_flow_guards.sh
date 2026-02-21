@@ -15,6 +15,9 @@ assert_contains "$f" 'DRY-RUN: would run mssql-conf with PID and SA password (re
 assert_contains "$f" 'sql_escape_literal()'
 assert_contains "$f" 'sql_escape_identifier()'
 assert_contains "$f" 'wait_for_sql_ready()'
+assert_contains "$f" 'wait_for_unit_active()'
+assert_contains "$f" 'recover_mssql_service()'
+assert_contains "$f" 'restart_mssql_resilient()'
 assert_contains "$f" 'timeout 8 "$sqlcmd_bin" -l 3 -S localhost -U sa -P "$sa_pw" -Q "SELECT 1"'
 assert_contains "$f" 'config/ubuntu/24.04/prod.list'
 assert_contains "$f" 'apt-get install -y mssql-tools18 unixodbc-dev'
@@ -22,7 +25,8 @@ assert_contains "$f" 'apt-get install -y mssql-tools unixodbc-dev || die "Unable
 assert_contains "$f" 'ALTER DATABASE [tempdb] MODIFY FILE'
 assert_contains "$f" 'sqlcmd not found at /opt/mssql-tools18/bin/sqlcmd or /opt/mssql-tools/bin/sqlcmd'
 assert_contains "$f" 'Still waiting for SQL Server...'
-assert_contains "$f" 'systemctl restart mssql-server'
+assert_contains "$f" 'systemctl restart --no-block mssql-server'
+assert_contains "$f" 'mssql-server restart did not converge; attempting recovery'
 assert_contains "$f" 'wait_for_sql_ready "$sqlcmd_bin" "$sa_pw" 180 5'
 
 echo "install flow guard checks passed"
