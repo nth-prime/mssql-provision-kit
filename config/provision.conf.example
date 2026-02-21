@@ -28,3 +28,11 @@ SQL_DATA_PATH="/var/opt/mssql/data"
 SQL_LOG_PATH="/var/opt/mssql/log"
 SQL_BACKUP_PATH="/var/opt/mssql/backup"
 SQL_TEMPDB_PATH="/var/opt/mssql/tempdb"
+
+# Network policy
+SQL_TCP_PORT="1433"
+NETWORK_ENFORCE_WHITELIST="1"
+NETWORK_ALLOWED_IPV4=""
+NETWORK_ALLOWED_IPV6=""
+NETWORK_ALLOW_TAILSCALE="1"
+NETWORK_TAILSCALE_INTERFACE="tailscale0"

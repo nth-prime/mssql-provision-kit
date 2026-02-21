@@ -21,5 +21,12 @@ assert_contains "$cfg" 'SQL_DATA_PATH="/var/opt/mssql/data"'
 assert_contains "$cfg" 'SQL_LOG_PATH="/var/opt/mssql/log"'
 assert_contains "$cfg" 'SQL_BACKUP_PATH="/var/opt/mssql/backup"'
 assert_contains "$cfg" 'SQL_TEMPDB_PATH="/var/opt/mssql/tempdb"'
+assert_contains "$cfg" 'SQL_TCP_PORT="1433"'
+assert_contains "$cfg" 'NETWORK_ENFORCE_WHITELIST="1"'
+assert_contains "$cfg" 'NETWORK_ALLOWED_IPV4=""'
+assert_contains "$cfg" 'NETWORK_ALLOWED_IPV6=""'
+assert_contains "$cfg" 'NETWORK_ALLOW_TAILSCALE="1"'
+assert_contains "$cfg" 'NETWORK_TAILSCALE_INTERFACE="tailscale0"'
+assert_contains "$cfg" 'NETWORK_ALLOWED_IPV6=""'
 
 echo "config defaults checks passed"

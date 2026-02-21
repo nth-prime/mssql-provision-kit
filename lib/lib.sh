@@ -110,3 +110,32 @@ ensure_sql_paths_from_root() {
   config_set SQL_BACKUP_PATH "$back"
   config_set SQL_TEMPDB_PATH "$temp"
 }
+
+ensure_network_defaults() {
+  local sql_port enforce wl4 wl6 allow_ts ts_if
+
+  sql_port="$(config_get SQL_TCP_PORT)"
+  enforce="$(config_get NETWORK_ENFORCE_WHITELIST)"
+  wl4="$(config_get NETWORK_ALLOWED_IPV4)"
+  wl6="$(config_get NETWORK_ALLOWED_IPV6)"
+  allow_ts="$(config_get NETWORK_ALLOW_TAILSCALE)"
+  ts_if="$(config_get NETWORK_TAILSCALE_INTERFACE)"
+
+  [[ "$sql_port" =~ ^[0-9]+$ ]] || sql_port="1433"
+  (( sql_port >= 1 && sql_port <= 65535 )) || sql_port="1433"
+
+  if [[ "$enforce" != "0" && "$enforce" != "1" ]]; then
+    enforce="1"
+  fi
+  if [[ "$allow_ts" != "0" && "$allow_ts" != "1" ]]; then
+    allow_ts="1"
+  fi
+  [[ -n "$ts_if" ]] || ts_if="tailscale0"
+
+  config_set SQL_TCP_PORT "$sql_port"
+  config_set NETWORK_ENFORCE_WHITELIST "$enforce"
+  config_set NETWORK_ALLOWED_IPV4 "$wl4"
+  config_set NETWORK_ALLOWED_IPV6 "$wl6"
+  config_set NETWORK_ALLOW_TAILSCALE "$allow_ts"
+  config_set NETWORK_TAILSCALE_INTERFACE "$ts_if"
+}

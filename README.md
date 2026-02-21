@@ -34,6 +34,7 @@ mssql-provision-kit/
     10-host-preflight.sh
     20-install-sql.sh
     30-post-validate.sh
+    31-network-validate.sh
     40-storage-preflight.sh
     41-storage-inspect.sh
     42-storage-health.sh
@@ -44,6 +45,7 @@ mssql-provision-kit/
     80-uninstall-cleanup.sh
     85-restart-now.sh
     90-show-state.sh
+    92-print-effective-config.sh
   tests/
     tester
     lib/assert.sh
@@ -114,6 +116,12 @@ Key settings:
 - `DEFAULT_SYSADMIN_LOGIN` (prompt allows override)
 - `SQL_STORAGE_ROOT` single storage root
 - `SQL_DATA_PATH`, `SQL_LOG_PATH`, `SQL_BACKUP_PATH`, `SQL_TEMPDB_PATH`
+- `SQL_TCP_PORT` SQL listener port validation target (default `1433`)
+- `NETWORK_ENFORCE_WHITELIST=1|0`
+- `NETWORK_ALLOWED_IPV4` space-separated IPv4 CIDRs
+- `NETWORK_ALLOWED_IPV6` space-separated IPv6 CIDRs
+- `NETWORK_ALLOW_TAILSCALE=1|0` toggle SQL exposure on Tailscale interface
+- `NETWORK_TAILSCALE_INTERFACE` interface name (default `tailscale0`)
 
 Default paths:
 
@@ -144,6 +152,8 @@ Top-level menu:
 9. Run Unit Tests
 10. Restart Machine Now
 11. Update Provision Kit from GitHub
+12. Run Network Validation
+13. Print Effective Config
 
 Storage Layout submenu:
 

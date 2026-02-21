@@ -108,6 +108,8 @@ while true; do
   echo "9) Run Unit Tests"
   echo "10) Restart Machine Now"
   echo "11) Update Provision Kit from GitHub"
+  echo "12) Run Network Validation"
+  echo "13) Print Effective Config"
   echo "q) Quit"
   read -rp "Select: " opt
 
@@ -123,6 +125,8 @@ while true; do
     9) run_sector_safe "$SECTOR_DIR/50-run-unit-tests.sh" ;;
     10) run_sector_safe "$SECTOR_DIR/85-restart-now.sh" ;;
     11) run_sector_safe "$SECTOR_DIR/05-update-kit.sh" ;;
+    12) run_sector_safe "$SECTOR_DIR/31-network-validate.sh" ;;
+    13) run_sector_safe "$SECTOR_DIR/92-print-effective-config.sh" ;;
     q|Q) exit 0 ;;
     *) echo "Invalid selection." ;;
   esac
