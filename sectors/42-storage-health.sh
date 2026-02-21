@@ -12,7 +12,7 @@ root="$(config_get SQL_STORAGE_ROOT)"
 for key in SQL_DATA_PATH SQL_LOG_PATH SQL_BACKUP_PATH SQL_TEMPDB_PATH; do
   p="$(config_get "$key")"
   echo "[$key] path=$p"
-  [[ "$p" == "$root"* ]] || die "$key must be under SQL_STORAGE_ROOT ($root)"
+  path_is_within_root "$root" "$p" || die "$key must be under SQL_STORAGE_ROOT ($root)"
   parent="$(dirname "$p")"
   [[ -d "$parent" ]] || die "Parent directory missing for $key: $parent"
   [[ -w "$parent" ]] || die "Parent directory not writable for $key: $parent"

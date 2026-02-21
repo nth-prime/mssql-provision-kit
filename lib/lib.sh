@@ -32,7 +32,10 @@ load_config() {
 
 config_get() {
   local key="$1"
-  grep -E "^${key}=" "$CONFIG_FILE" | tail -n1 | sed -E 's/^[^=]+=//; s/^"//; s/"$//'
+  local line
+  line="$(grep -E "^${key}=" "$CONFIG_FILE" 2>/dev/null | tail -n1 || true)"
+  [[ -n "$line" ]] || return 0
+  echo "$line" | sed -E 's/^[^=]+=//; s/^"//; s/"$//'
 }
 
 config_set() {
@@ -74,10 +77,19 @@ require_cmds() {
   [[ $missing -eq 0 ]] || die "Install missing dependencies and retry."
 }
 
+path_is_within_root() {
+  local root="$1"
+  local child="$2"
+  [[ "$child" == "$root" || "$child" == "$root/"* ]]
+}
+
 ensure_sql_paths_from_root() {
   local root data logp back temp
   root="$(config_get SQL_STORAGE_ROOT)"
-  [[ -n "$root" ]] || die "SQL_STORAGE_ROOT must be set"
+  if [[ -z "$root" ]]; then
+    root="/var/opt/mssql"
+    config_set SQL_STORAGE_ROOT "$root"
+  fi
 
   data="$(config_get SQL_DATA_PATH)"
   logp="$(config_get SQL_LOG_PATH)"

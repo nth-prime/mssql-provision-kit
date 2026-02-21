@@ -3,7 +3,6 @@ set -euo pipefail
 source /opt/mssql-provision-kit/lib/lib.sh
 
 require_root
-load_config
 
 echo "This will remove mssql-server package and kit files tracked by this installer."
 read -rp "Type uninstall to proceed: " typed

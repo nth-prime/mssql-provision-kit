@@ -6,6 +6,16 @@ usage() {
   echo "Usage: $0 [--dry-run|--apply]"
 }
 
+sql_escape_literal() {
+  local v="$1"
+  echo "${v//\'/\'\'}"
+}
+
+sql_escape_identifier() {
+  local v="$1"
+  echo "${v//]/]]}"
+}
+
 require_root
 load_config
 
@@ -92,6 +102,9 @@ else
   die "Unknown VERSION_STRATEGY: $strategy"
 fi
 
+# sqlcmd is required for creating the mandatory sysadmin login and post-install actions.
+run_cmd "$dry_run" bash -c "ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev"
+
 pid="Developer"
 if [[ "$edition" == "Standard" ]]; then
   pid="$product_key"
@@ -105,15 +118,23 @@ else
   /opt/mssql/bin/mssql-conf set filelocation.defaultdatadir "$data_path"
   /opt/mssql/bin/mssql-conf set filelocation.defaultlogdir "$log_path"
   /opt/mssql/bin/mssql-conf set filelocation.defaultbackupdir "$backup_path"
+  mkdir -p "$tempdb_path"
   chown -R mssql:mssql "$storage_root"
 fi
 
 if [[ "$dry_run" == "0" ]]; then
-  q="CREATE LOGIN [$sys_login] WITH PASSWORD=N'$sys_pw', DEFAULT_DATABASE=[master], CHECK_POLICY=ON; ALTER SERVER ROLE [sysadmin] ADD MEMBER [$sys_login];"
+  sqlcmd_bin="/opt/mssql-tools18/bin/sqlcmd"
+  [[ -x "$sqlcmd_bin" ]] || die "sqlcmd not found at $sqlcmd_bin"
+
+  login_esc="$(sql_escape_identifier "$sys_login")"
+  pw_esc="$(sql_escape_literal "$sys_pw")"
+  temp_path_esc="$(sql_escape_literal "$tempdb_path")"
+
+  q="CREATE LOGIN [$login_esc] WITH PASSWORD=N'$pw_esc', DEFAULT_DATABASE=[master], CHECK_POLICY=ON; ALTER SERVER ROLE [sysadmin] ADD MEMBER [$login_esc];"
   /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$sa_pw" -Q "$q"
 
-  # Best-effort tempdb relocation statement for new files.
-  /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$sa_pw" -Q "IF DB_ID('tempdb') IS NOT NULL PRINT 'tempdb path target: $tempdb_path';"
+  # Set tempdb primary file/log locations to the configured directory.
+  /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$sa_pw" -Q "ALTER DATABASE [tempdb] MODIFY FILE (NAME = N'tempdev', FILENAME = N'$temp_path_esc/tempdb.mdf'); ALTER DATABASE [tempdb] MODIFY FILE (NAME = N'templog', FILENAME = N'$temp_path_esc/templog.ldf');"
 
   systemctl restart mssql-server
 fi

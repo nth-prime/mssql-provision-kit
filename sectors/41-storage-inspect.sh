@@ -13,7 +13,11 @@ backup="$(config_get SQL_BACKUP_PATH)"
 tempdb="$(config_get SQL_TEMPDB_PATH)"
 
 log "Inspecting storage state..."
-lsblk -f
+if command -v lsblk >/dev/null 2>&1; then
+  lsblk -f || true
+else
+  echo "lsblk not found"
+fi
 
 echo
 echo "Configured SQL paths:"
@@ -33,4 +37,8 @@ for p in "$root" "$data" "$logp" "$backup" "$tempdb"; do
 done
 
 echo
-df -hT
+if command -v df >/dev/null 2>&1; then
+  df -hT || true
+else
+  echo "df not found"
+fi

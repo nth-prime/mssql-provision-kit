@@ -9,6 +9,7 @@ assert_file_exists "$f"
 
 assert_contains "$f" 'read -rp "Type uninstall to proceed: " typed'
 assert_contains "$f" '[[ "$typed" == "uninstall" ]] || die "Uninstall cancelled"'
+assert_not_contains "$f" 'load_config'
 assert_contains "$f" 'rm -rf /opt/mssql-provision-kit || true'
 assert_contains "$f" 'rm -rf /etc/mssql-provision-kit || true'
 assert_contains "$f" 'rm -rf /var/lib/mssql-provision-kit || true'

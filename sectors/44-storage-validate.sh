@@ -12,7 +12,7 @@ for key in SQL_DATA_PATH SQL_LOG_PATH SQL_BACKUP_PATH SQL_TEMPDB_PATH; do
   p="$(config_get "$key")"
   [[ -d "$p" ]] || die "Missing directory for $key: $p"
   [[ -w "$p" ]] || die "Directory not writable for $key: $p"
-  [[ "$p" == "$root"* ]] || die "$key is outside SQL_STORAGE_ROOT"
+  path_is_within_root "$root" "$p" || die "$key is outside SQL_STORAGE_ROOT"
   probe="$p/.mssql-provision-write-test"
   echo "ok $(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$probe"
   rm -f "$probe"
