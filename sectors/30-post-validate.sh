@@ -79,13 +79,14 @@ if [[ -n "$sqlcmd_bin" ]]; then
   if [[ "$run_sql" =~ ^[yY]$ ]]; then
     read -rsp "Enter SA password for SQL checks: " sa_pw
     echo
+    sql_auth=(-C -l 3 -S localhost -U sa -P "$sa_pw")
 
     echo "== SQL server identity =="
-    "$sqlcmd_bin" -l 3 -S localhost -U sa -P "$sa_pw" -Q "SET NOCOUNT ON; SELECT @@SERVERNAME AS server_name, SERVERPROPERTY('Edition') AS edition, SERVERPROPERTY('ProductVersion') AS product_version, SERVERPROPERTY('ProductLevel') AS product_level;" || die "SQL identity query failed"
+    "$sqlcmd_bin" "${sql_auth[@]}" -Q "SET NOCOUNT ON; SELECT @@SERVERNAME AS server_name, SERVERPROPERTY('Edition') AS edition, SERVERPROPERTY('ProductVersion') AS product_version, SERVERPROPERTY('ProductLevel') AS product_level;" || die "SQL identity query failed"
 
     echo
     echo "== Database size summary (MB) =="
-    "$sqlcmd_bin" -l 3 -S localhost -U sa -P "$sa_pw" -Q "SET NOCOUNT ON; SELECT d.name AS db_name, CAST(SUM(CASE WHEN mf.type_desc='ROWS' THEN mf.size ELSE 0 END)*8.0/1024 AS DECIMAL(18,1)) AS data_mb, CAST(SUM(CASE WHEN mf.type_desc='LOG' THEN mf.size ELSE 0 END)*8.0/1024 AS DECIMAL(18,1)) AS log_mb FROM sys.master_files mf JOIN sys.databases d ON d.database_id = mf.database_id GROUP BY d.name ORDER BY d.name;" || die "Database size query failed"
+    "$sqlcmd_bin" "${sql_auth[@]}" -Q "SET NOCOUNT ON; SELECT d.name AS db_name, CAST(SUM(CASE WHEN mf.type_desc='ROWS' THEN mf.size ELSE 0 END)*8.0/1024 AS DECIMAL(18,1)) AS data_mb, CAST(SUM(CASE WHEN mf.type_desc='LOG' THEN mf.size ELSE 0 END)*8.0/1024 AS DECIMAL(18,1)) AS log_mb FROM sys.master_files mf JOIN sys.databases d ON d.database_id = mf.database_id GROUP BY d.name ORDER BY d.name;" || die "Database size query failed"
   else
     echo "SQL catalog checks skipped."
   fi

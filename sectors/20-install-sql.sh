@@ -67,12 +67,12 @@ wait_for_sql_ready() {
   while (( waited < timeout_s )); do
     attempt=$((attempt + 1))
     log "Probe attempt ${attempt}: checking SQL connectivity on localhost"
-    if command -v timeout >/dev/null 2>&1; then
-      if timeout 8 "$sqlcmd_bin" -l 3 -S localhost -U sa -P "$sa_pw" -Q "SELECT 1" >/dev/null 2>&1; then
+  if command -v timeout >/dev/null 2>&1; then
+      if timeout 8 "$sqlcmd_bin" -C -l 3 -S localhost -U sa -P "$sa_pw" -Q "SELECT 1" >/dev/null 2>&1; then
         log "SQL Server is accepting connections."
         return 0
       fi
-    elif "$sqlcmd_bin" -l 3 -S localhost -U sa -P "$sa_pw" -Q "SELECT 1" >/dev/null 2>&1; then
+    elif "$sqlcmd_bin" -C -l 3 -S localhost -U sa -P "$sa_pw" -Q "SELECT 1" >/dev/null 2>&1; then
       log "SQL Server is accepting connections."
       return 0
     fi
@@ -225,10 +225,10 @@ if [[ "$dry_run" == "0" ]]; then
   temp_path_esc="$(sql_escape_literal "$tempdb_path")"
 
   q="CREATE LOGIN [$login_esc] WITH PASSWORD=N'$pw_esc', DEFAULT_DATABASE=[master], CHECK_POLICY=ON; ALTER SERVER ROLE [sysadmin] ADD MEMBER [$login_esc];"
-  "$sqlcmd_bin" -S localhost -U sa -P "$sa_pw" -Q "$q"
+  "$sqlcmd_bin" -C -S localhost -U sa -P "$sa_pw" -Q "$q"
 
   # Set tempdb primary file/log locations to the configured directory.
-  "$sqlcmd_bin" -S localhost -U sa -P "$sa_pw" -Q "ALTER DATABASE [tempdb] MODIFY FILE (NAME = N'tempdev', FILENAME = N'$temp_path_esc/tempdb.mdf'); ALTER DATABASE [tempdb] MODIFY FILE (NAME = N'templog', FILENAME = N'$temp_path_esc/templog.ldf');"
+  "$sqlcmd_bin" -C -S localhost -U sa -P "$sa_pw" -Q "ALTER DATABASE [tempdb] MODIFY FILE (NAME = N'tempdev', FILENAME = N'$temp_path_esc/tempdb.mdf'); ALTER DATABASE [tempdb] MODIFY FILE (NAME = N'templog', FILENAME = N'$temp_path_esc/templog.ldf');"
 
   restart_mssql_resilient
   wait_for_sql_ready "$sqlcmd_bin" "$sa_pw" 180 5
