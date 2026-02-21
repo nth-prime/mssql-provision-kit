@@ -88,18 +88,22 @@ ensure_sql_paths_from_root() {
   root="$(config_get SQL_STORAGE_ROOT)"
   if [[ -z "$root" ]]; then
     root="/var/opt/mssql"
-    config_set SQL_STORAGE_ROOT "$root"
   fi
+  # Reject malformed root values from legacy/bad config edits.
+  if [[ "$root" == *"\""* || "$root" == *"="* || "$root" != /* ]]; then
+    root="/var/opt/mssql"
+  fi
+  config_set SQL_STORAGE_ROOT "$root"
 
   data="$(config_get SQL_DATA_PATH)"
   logp="$(config_get SQL_LOG_PATH)"
   back="$(config_get SQL_BACKUP_PATH)"
   temp="$(config_get SQL_TEMPDB_PATH)"
 
-  [[ -n "$data" ]] || data="$root/data"
-  [[ -n "$logp" ]] || logp="$root/log"
-  [[ -n "$back" ]] || back="$root/backup"
-  [[ -n "$temp" ]] || temp="$root/tempdb"
+  [[ -n "$data" && "$data" == /* && "$data" != *"\""* && "$data" != *"="* ]] || data="$root/data"
+  [[ -n "$logp" && "$logp" == /* && "$logp" != *"\""* && "$logp" != *"="* ]] || logp="$root/log"
+  [[ -n "$back" && "$back" == /* && "$back" != *"\""* && "$back" != *"="* ]] || back="$root/backup"
+  [[ -n "$temp" && "$temp" == /* && "$temp" != *"\""* && "$temp" != *"="* ]] || temp="$root/tempdb"
 
   config_set SQL_DATA_PATH "$data"
   config_set SQL_LOG_PATH "$logp"
