@@ -6,6 +6,27 @@ usage() {
   echo "Usage: $0 [--dry-run|--apply]"
 }
 
+wait_for_sql_ready() {
+  local sqlcmd_bin="$1"
+  local sa_pw="$2"
+  local timeout_s="${3:-180}"
+  local interval_s="${4:-5}"
+  local waited=0
+
+  log "Waiting for SQL Server to accept connections (timeout: ${timeout_s}s, interval: ${interval_s}s)"
+  while (( waited < timeout_s )); do
+    if "$sqlcmd_bin" -S localhost -U sa -P "$sa_pw" -Q "SELECT 1" >/dev/null 2>&1; then
+      log "SQL Server is accepting connections."
+      return 0
+    fi
+    waited=$((waited + interval_s))
+    log "Still waiting for SQL Server... (${waited}/${timeout_s}s)"
+    sleep "$interval_s"
+  done
+
+  die "SQL Server did not become ready within ${timeout_s}s"
+}
+
 sql_escape_literal() {
   local v="$1"
   echo "${v//\'/\'\'}"
@@ -122,6 +143,7 @@ fi
 if [[ "$dry_run" == "1" ]]; then
   log "DRY-RUN: would run mssql-conf with PID and SA password (redacted)."
   log "DRY-RUN: would set default data/log/backup paths via mssql-conf."
+  log "DRY-RUN: would restart mssql-server and wait for readiness before sqlcmd actions."
 else
   MSSQL_PID="$pid" ACCEPT_EULA=Y MSSQL_SA_PASSWORD="$sa_pw" /opt/mssql/bin/mssql-conf -n setup
   /opt/mssql/bin/mssql-conf set filelocation.defaultdatadir "$data_path"
@@ -129,6 +151,7 @@ else
   /opt/mssql/bin/mssql-conf set filelocation.defaultbackupdir "$backup_path"
   mkdir -p "$tempdb_path"
   chown -R mssql:mssql "$storage_root"
+  systemctl restart mssql-server
 fi
 
 if [[ "$dry_run" == "0" ]]; then
@@ -137,6 +160,8 @@ if [[ "$dry_run" == "0" ]]; then
     sqlcmd_bin="/opt/mssql-tools/bin/sqlcmd"
   fi
   [[ -x "$sqlcmd_bin" ]] || die "sqlcmd not found at /opt/mssql-tools18/bin/sqlcmd or /opt/mssql-tools/bin/sqlcmd"
+
+  wait_for_sql_ready "$sqlcmd_bin" "$sa_pw" 180 5
 
   login_esc="$(sql_escape_identifier "$sys_login")"
   pw_esc="$(sql_escape_literal "$sys_pw")"
@@ -149,6 +174,7 @@ if [[ "$dry_run" == "0" ]]; then
   "$sqlcmd_bin" -S localhost -U sa -P "$sa_pw" -Q "ALTER DATABASE [tempdb] MODIFY FILE (NAME = N'tempdev', FILENAME = N'$temp_path_esc/tempdb.mdf'); ALTER DATABASE [tempdb] MODIFY FILE (NAME = N'templog', FILENAME = N'$temp_path_esc/templog.ldf');"
 
   systemctl restart mssql-server
+  wait_for_sql_ready "$sqlcmd_bin" "$sa_pw" 180 5
 fi
 
 log "Install workflow complete."
