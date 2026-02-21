@@ -5,11 +5,9 @@ KIT_NAME="mssql-provision-kit"
 BASE_DIR="/opt/${KIT_NAME}"
 CONFIG_FILE="/etc/${KIT_NAME}/provision.conf"
 STATE_DIR="/var/lib/${KIT_NAME}/state"
-TX_DIR="$STATE_DIR/transactions"
 LOG_DIR="/var/log/${KIT_NAME}"
-PLAN_FILE="$STATE_DIR/storage-plan.conf"
 
-mkdir -p "$STATE_DIR" "$TX_DIR" "$LOG_DIR"
+mkdir -p "$STATE_DIR" "$LOG_DIR"
 
 log() {
   local ts
@@ -54,19 +52,6 @@ is_ubuntu_24() {
   [[ "${ID:-}" == "ubuntu" && "${VERSION_ID:-}" == "24.04" ]]
 }
 
-begin_tx() {
-  local name="$1"
-  local tx
-  tx="${TX_DIR}/$(date -u +%Y%m%dT%H%M%SZ)-${name}"
-  mkdir -p "$tx"
-  [[ -f /etc/fstab ]] && cp -a /etc/fstab "$tx/fstab.before"
-  echo "$tx"
-}
-
-latest_tx() {
-  ls -1dt "$TX_DIR"/* 2>/dev/null | head -n1 || true
-}
-
 run_cmd() {
   local dry_run="$1"
   shift
@@ -89,19 +74,23 @@ require_cmds() {
   [[ $missing -eq 0 ]] || die "Install missing dependencies and retry."
 }
 
-volume_ids() {
-  local v
-  v="$(config_get VOLUMES)"
-  echo "$v"
-}
+ensure_sql_paths_from_root() {
+  local root data logp back temp
+  root="$(config_get SQL_STORAGE_ROOT)"
+  [[ -n "$root" ]] || die "SQL_STORAGE_ROOT must be set"
 
-volume_key() {
-  local id="$1"
-  local field="$2"
-  config_get "VOLUME_${id}_${field}"
-}
+  data="$(config_get SQL_DATA_PATH)"
+  logp="$(config_get SQL_LOG_PATH)"
+  back="$(config_get SQL_BACKUP_PATH)"
+  temp="$(config_get SQL_TEMPDB_PATH)"
 
-resolve_volume_device() {
-  local id="$1"
-  volume_key "$id" DEVICE
+  [[ -n "$data" ]] || data="$root/data"
+  [[ -n "$logp" ]] || logp="$root/log"
+  [[ -n "$back" ]] || back="$root/backup"
+  [[ -n "$temp" ]] || temp="$root/tempdb"
+
+  config_set SQL_DATA_PATH "$data"
+  config_set SQL_LOG_PATH "$logp"
+  config_set SQL_BACKUP_PATH "$back"
+  config_set SQL_TEMPDB_PATH "$temp"
 }

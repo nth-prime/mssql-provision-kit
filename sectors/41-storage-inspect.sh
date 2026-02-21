@@ -5,19 +5,32 @@ source /opt/mssql-provision-kit/lib/lib.sh
 require_root
 load_config
 
-view="${1:-all}"
+ensure_sql_paths_from_root
+root="$(config_get SQL_STORAGE_ROOT)"
+data="$(config_get SQL_DATA_PATH)"
+logp="$(config_get SQL_LOG_PATH)"
+backup="$(config_get SQL_BACKUP_PATH)"
+tempdb="$(config_get SQL_TEMPDB_PATH)"
 
 log "Inspecting storage state..."
-if [[ "$view" == "all" ]]; then
-  lsblk -f
-  echo
-  blkid || true
-  echo
-  findmnt -lo TARGET,SOURCE,FSTYPE,OPTIONS | sed -n '1,200p'
-  echo
-  df -hT
-else
-  findmnt -lo TARGET,SOURCE,FSTYPE,OPTIONS
-  echo
-  df -hT
-fi
+lsblk -f
+
+echo
+echo "Configured SQL paths:"
+echo "  root   : $root"
+echo "  data   : $data"
+echo "  log    : $logp"
+echo "  backup : $backup"
+echo "  tempdb : $tempdb"
+
+echo
+for p in "$root" "$data" "$logp" "$backup" "$tempdb"; do
+  if [[ -e "$p" ]]; then
+    findmnt -T "$p" || true
+  else
+    echo "Path missing: $p"
+  fi
+done
+
+echo
+df -hT

@@ -56,10 +56,20 @@ echo
 [[ "$sys_pw" == "$sys_pw2" ]] || die "Sysadmin passwords did not match"
 [[ ${#sys_pw} -ge 8 ]] || die "Sysadmin password too short"
 
+ensure_sql_paths_from_root
+storage_root="$(config_get SQL_STORAGE_ROOT)"
+data_path="$(config_get SQL_DATA_PATH)"
+log_path="$(config_get SQL_LOG_PATH)"
+backup_path="$(config_get SQL_BACKUP_PATH)"
+tempdb_path="$(config_get SQL_TEMPDB_PATH)"
+
 log "Install mode: $mode"
 log "Version strategy: $strategy"
 log "Edition: $edition"
 log "Sysadmin login: $sys_login"
+log "SQL storage root: $storage_root"
+
+run_cmd "$dry_run" mkdir -p "$storage_root" "$data_path" "$log_path" "$backup_path" "$tempdb_path"
 
 # Repos and package install
 run_cmd "$dry_run" bash -c "curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg"
@@ -89,25 +99,22 @@ fi
 
 if [[ "$dry_run" == "1" ]]; then
   log "DRY-RUN: would run mssql-conf with PID and SA password (redacted)."
+  log "DRY-RUN: would set default data/log/backup paths via mssql-conf."
 else
   MSSQL_PID="$pid" ACCEPT_EULA=Y MSSQL_SA_PASSWORD="$sa_pw" /opt/mssql/bin/mssql-conf -n setup
+  /opt/mssql/bin/mssql-conf set filelocation.defaultdatadir "$data_path"
+  /opt/mssql/bin/mssql-conf set filelocation.defaultlogdir "$log_path"
+  /opt/mssql/bin/mssql-conf set filelocation.defaultbackupdir "$backup_path"
+  chown -R mssql:mssql "$storage_root"
 fi
-
-# Set storage paths after role mapping
-for kv in SQL_DATA_VOLUME SQL_LOG_VOLUME SQL_BACKUP_VOLUME SQL_TEMPDB_VOLUME; do
-  vid="$(config_get "$kv")"
-  mnt="$(volume_key "$vid" MOUNT)"
-  case "$kv" in
-    SQL_DATA_VOLUME) config_set SQL_DATA_PATH "$mnt" ;;
-    SQL_LOG_VOLUME) config_set SQL_LOG_PATH "$mnt" ;;
-    SQL_BACKUP_VOLUME) config_set SQL_BACKUP_PATH "$mnt" ;;
-    SQL_TEMPDB_VOLUME) config_set SQL_TEMPDB_PATH "$mnt" ;;
-  esac
-done
 
 if [[ "$dry_run" == "0" ]]; then
   q="CREATE LOGIN [$sys_login] WITH PASSWORD=N'$sys_pw', DEFAULT_DATABASE=[master], CHECK_POLICY=ON; ALTER SERVER ROLE [sysadmin] ADD MEMBER [$sys_login];"
   /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$sa_pw" -Q "$q"
+
+  # Best-effort tempdb relocation statement for new files.
+  /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$sa_pw" -Q "IF DB_ID('tempdb') IS NOT NULL PRINT 'tempdb path target: $tempdb_path';"
+
   systemctl restart mssql-server
 fi
 

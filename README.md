@@ -1,21 +1,21 @@
 # mssql-provision-kit
 
-SQL Server 2025 provisioning kit for Ubuntu 24.04 with modular sectors, idempotent scripts, mandatory preflight checks, and storage provisioning workflows.
+SQL Server 2025 provisioning kit for Ubuntu 24.04 with modular sectors, idempotent scripts, mandatory preflight checks, and a single-drive SQL directory layout.
 
 ## Scope and Support
 
 - OS: Ubuntu 24.04
 - SQL: SQL Server 2025
-- Filesystems: `xfs` and `ext4`
+- Storage model: single drive with directories for data, log, backup, and tempdb
+
 The kit hard-fails outside this scope by design.
 
 ## Security and Safety Defaults
 
 - Mandatory preflight before install
-- Dry-run path for install and storage planning
-- Explicit typed confirmations for apply/rollback/uninstall paths
+- Dry-run path for install and storage layout
+- Explicit typed confirmations for apply/uninstall paths
 - Uninstall requires exact input: `uninstall`
-- Transaction snapshots for storage changes under `/var/lib/mssql-provision-kit/state/transactions`
 
 ## Repository Layout
 
@@ -29,20 +29,19 @@ mssql-provision-kit/
   lib/
     lib.sh
   sectors/
+    05-update-kit.sh
     10-host-preflight.sh
     20-install-sql.sh
     30-post-validate.sh
     40-storage-preflight.sh
     41-storage-inspect.sh
     42-storage-health.sh
-    43-storage-plan.sh
-    44-storage-apply.sh
-    45-storage-validate.sh
-    46-storage-role-map.sh
+    43-storage-layout.sh
+    44-storage-validate.sh
     47-storage-report.sh
-    48-storage-rollback.sh
-    49-storage-advanced.sh
+    50-run-unit-tests.sh
     80-uninstall-cleanup.sh
+    85-restart-now.sh
     90-show-state.sh
   tests/
     tester
@@ -107,18 +106,21 @@ Key settings:
 - `VERSION_STRATEGY=latest|pinned|explicit`
 - `PINNED_BUILD` for pinned package installs
 - `EXPLICIT_DEB_URL` for explicit package URL installs
+- `MSSQL_PROVISION_KIT_REPO_URL` updater source repository
+- `MSSQL_PROVISION_KIT_BRANCH` updater branch
 - `MSSQL_EDITION=Developer|Standard`
 - `PROMPT_FOR_SA_PASSWORD=1|0`
 - `DEFAULT_SYSADMIN_LOGIN` (prompt allows override)
-- `VOLUMES="v1 v2 ..."` with per-volume `DEVICE/FS/MOUNT` keys
-- SQL role mapping: `SQL_DATA_VOLUME`, `SQL_LOG_VOLUME`, `SQL_BACKUP_VOLUME`, `SQL_TEMPDB_VOLUME`
+- `SQL_STORAGE_ROOT` single storage root
+- `SQL_DATA_PATH`, `SQL_LOG_PATH`, `SQL_BACKUP_PATH`, `SQL_TEMPDB_PATH`
 
-Default role intent mount mapping:
+Default paths:
 
-- data: `/mnt/d`
-- log: `/mnt/l`
-- backup: `/mnt/b`
-- tempdb: `/mnt/t`
+- root: `/var/opt/mssql`
+- data: `/var/opt/mssql/data`
+- log: `/var/opt/mssql/log`
+- backup: `/var/opt/mssql/backup`
+- tempdb: `/var/opt/mssql/tempdb`
 
 ## Usage
 
@@ -135,26 +137,23 @@ Top-level menu:
 3. Dry-Run Install Plan
 4. Install SQL Server 2025
 5. Post-Install Validation
-6. Drive Provisioning
+6. Storage Layout
 7. Uninstall / Cleanup
 8. Show State + Logs
+9. Run Unit Tests
+10. Restart Machine Now
+11. Update Provision Kit from GitHub
 
-Drive Provisioning submenu:
+Storage Layout submenu:
 
 1. Run Storage Preflight
-2. Inspect Disks and Topology
-3. Inspect Mounts and Free Space
-4. Inspect Filesystem Health
-5. Build Provisioning Plan (Interactive)
-6. Preview Plan (Dry-Run)
-7. Apply Plan: Partition + Format + Mount
-8. Apply Plan: Mount + Fstab Only
-9. Validate Provisioned Volumes
-10. Map Volumes to SQL Roles
-11. Export Provisioning Report
-12. Rollback Last Provisioning Transaction
-13. Advanced Tools (Expert Mode)
-14. Back
+2. Inspect Storage and Filesystems
+3. Run Storage Health Checks
+4. Preview SQL Directory Layout (Dry-Run)
+5. Apply SQL Directory Layout
+6. Validate SQL Directory Layout
+7. Export Storage Report
+8. Back
 
 ## Versioning
 
@@ -175,8 +174,8 @@ Suggested release flow:
   - Re-run `sudo bash install.sh`.
 - `Unsupported OS` errors:
   - Confirm host is Ubuntu 24.04.
-- Storage apply/validate failures:
-  - Run Drive Provisioning options `1`, `2`, `6`, and `9` in sequence.
+- Storage layout failures:
+  - Run Storage Layout options `1`, `2`, `4`, and `6` in sequence.
 
 ## Testing
 

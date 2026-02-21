@@ -14,14 +14,11 @@ if [[ "${TARGET_SQL_MAJOR:-}" != "2025" ]]; then
   die "Only SQL Server 2025 is supported by this kit scope."
 fi
 
-for role in SQL_DATA_VOLUME SQL_LOG_VOLUME SQL_BACKUP_VOLUME SQL_TEMPDB_VOLUME; do
-  vid="$(config_get "$role")"
-  [[ -n "$vid" ]] || die "Missing role mapping: $role"
-  mnt="$(volume_key "$vid" MOUNT)"
-  [[ -n "$mnt" ]] || die "Missing mount for $vid"
-  if ! findmnt -n "$mnt" >/dev/null 2>&1; then
-    die "Required mount is not active: $mnt ($role=$vid)"
-  fi
+ensure_sql_paths_from_root
+for key in SQL_STORAGE_ROOT SQL_DATA_PATH SQL_LOG_PATH SQL_BACKUP_PATH SQL_TEMPDB_PATH; do
+  p="$(config_get "$key")"
+  [[ -n "$p" ]] || die "Missing $key"
+  [[ "$p" == /* ]] || die "$key must be an absolute path"
 done
 
 log "Preflight passed."
