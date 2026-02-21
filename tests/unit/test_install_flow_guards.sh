@@ -15,6 +15,7 @@ assert_contains "$f" 'DRY-RUN: would run mssql-conf with PID and SA password (re
 assert_contains "$f" 'sql_escape_literal()'
 assert_contains "$f" 'sql_escape_identifier()'
 assert_contains "$f" 'wait_for_sql_ready()'
+assert_contains "$f" 'timeout 8 "$sqlcmd_bin" -l 3 -S localhost -U sa -P "$sa_pw" -Q "SELECT 1"'
 assert_contains "$f" 'config/ubuntu/24.04/prod.list'
 assert_contains "$f" 'apt-get install -y mssql-tools18 unixodbc-dev'
 assert_contains "$f" 'apt-get install -y mssql-tools unixodbc-dev || die "Unable to install sqlcmd tools"'

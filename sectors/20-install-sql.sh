@@ -12,10 +12,18 @@ wait_for_sql_ready() {
   local timeout_s="${3:-180}"
   local interval_s="${4:-5}"
   local waited=0
+  local attempt=0
 
   log "Waiting for SQL Server to accept connections (timeout: ${timeout_s}s, interval: ${interval_s}s)"
   while (( waited < timeout_s )); do
-    if "$sqlcmd_bin" -S localhost -U sa -P "$sa_pw" -Q "SELECT 1" >/dev/null 2>&1; then
+    attempt=$((attempt + 1))
+    log "Probe attempt ${attempt}: checking SQL connectivity on localhost"
+    if command -v timeout >/dev/null 2>&1; then
+      if timeout 8 "$sqlcmd_bin" -l 3 -S localhost -U sa -P "$sa_pw" -Q "SELECT 1" >/dev/null 2>&1; then
+        log "SQL Server is accepting connections."
+        return 0
+      fi
+    elif "$sqlcmd_bin" -l 3 -S localhost -U sa -P "$sa_pw" -Q "SELECT 1" >/dev/null 2>&1; then
       log "SQL Server is accepting connections."
       return 0
     fi
